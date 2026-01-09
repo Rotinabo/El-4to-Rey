@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>♠️♦️ El 4to Rey ♣️♥️</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #111;
+  color: white;
+  margin: 0;
+  padding: 20px;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 0;
+}
+
+#firma {
+  text-align: center;
+  font-size: 14px;
+  opacity: 0.6;
+  margin-bottom: 10px;
+}
+
+/* LAYOUT */
+#layout {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+/* REYES */
+#reyes {
+  width: 18%;
+}
+
+.rey {
+  margin-bottom: 20px;
+}
+
+.rey label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.rey input {
+  width: 100%;
+  padding: 6px;
+  font-size: 14px;
+}
+
+/* CENTRO */
+#centro {
+  width: 50%;
+  text-align: center;
+}
+
+/* JUGADORES */
+.jugador {
+  font-size: 26px;
+  opacity: 0.6;
+  margin: 8px 0;
+}
+
+.activo {
+  font-size: 44px;
+  font-weight: bold;
+  color: gold;
+  opacity: 1;
+}
+
+.carta-mini {
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-left: 4px;
+  font-size: 16px;
+}
+
+/* CARTAS */
+#cartas {
+  width: 22%;
+  display: grid;
+  gap: 8px;
+}
+
+.fila {
+  display: grid;
+  grid-template-columns: repeat(4, 50px);
+  gap: 6px;
+}
+
+.carta {
+  border: 1px solid #777;
+  border-radius: 6px;
+  text-align: center;
+  cursor: pointer;
+  background: #222;
+  font-size: 18px;
+  padding: 10px 0;
+}
+
+.carta:hover {
+  background: #444;
+}
+
+/* BOTONES */
+input, button {
+  padding: 8px;
+  font-size: 16px;
+  margin: 5px;
+}
+
+/* CARTA GRANDE */
+#carta-grande {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  text-align: center;
+  z-index: 10;
+  padding: 40px;
+  white-space: pre-line;
+}
+
+#carta-grande .carta-texto {
+  font-size: 90px;
+}
+
+#carta-grande .reto-texto {
+  font-size: 40px;
+  margin-top: 20px;
+  opacity: 0.9;
+}
+
+/* FINALIZAR */
+#finalizar {
+  display: block;
+  margin: 20px auto 0 auto;
+  font-size: 22px;
+  padding: 12px 34px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>♠️♦️ El 4to Rey ♣️♥️</h1>
+<div id="firma">hecho por Andres "Roti" Barra</div>
+
+<div id="layout">
+
+  <!-- REYES -->
+  <div id="reyes">
+    <div class="rey"><label>♕1er rey♕ ¿DONDE?</label><input id="r1"></div>
+    <div class="rey"><label>♕2do rey♕ ¿COMO?</label><input id="r2"></div>
+    <div class="rey"><label>♕3er rey♕ ¿QUIEN?</label><input id="r3"></div>
+    <div class="rey"><label>♕4to rey♕ ¿CON QUIEN?</label><input id="r4"></div>
+  </div>
+
+  <!-- CENTRO -->
+  <div id="centro">
+    <input id="nombre" placeholder="Nombre del jugador">
+    <button onclick="agregar()">Agregar</button>
+    <div id="lista"></div>
+    <button onclick="siguiente()">▶ Siguiente turno</button>
+  </div>
+
+  <!-- CARTAS -->
+  <div id="cartas"></div>
+
+</div>
+
+<button id="finalizar" onclick="finalizar()">🏁 Finalizar juego</button>
+
+<div id="carta-grande" onclick="cerrarCarta()"></div>
+
+<script>
+let jugadores = [];
+let turno = 0;
+let cartasPorJugador = [];
+let cartaSeleccionada = null;
+
+/* MAPA DE RETOS */
+const retos = {
+  "A♠":"SHOT","A♦":"VERDAD O RETO","A♣":"YO NUNCA NUNCA (CON FAROL)","A♥":"ROJO O NEGRO",
+  "2♠":"MUJERES TOMAN","2♦":"PILDORAS","2♣":"¿QUIÉN ES MÁS PROBABLE QUE?","2♥":"OPUS",
+  "3♠":"REBALSADO","3♦":"PROBABILIDAD 1-3","3♣":"CULTURA CHUPISTICA","3♥":"ROJO O NEGRO",
+  "4♠":"TELÉFONO","4♦":"ROJO O NEGRO","4♣":"TÚ TOMAS","4♥":"CHANCHO INFLADO",
+  "5♠":"PILDORAS","5♦":"CULTURA CHUPISTICA","5♣":"REGALAS","5♥":"LLAMADA DE EMERGENCIA",
+  "6♠":"VERDAD O SHOT","6♦":"TRIVIA","6♣":"CHOOSER","6♥":"PIRAMIDE 1/2/3",
+  "7♠":"DESCONEXIÓN","7♦":"PANA DE JUEGO","7♣":"OVEJA NEGRA (SIN FAROL)","7♥":"REGLA",
+  "8♠":"HOMBRES TOMAN","8♦":"REBALSADO","8♣":"QUE LLEVO EN MI MALETA","8♥":"CIEGO, SORDO, MUDO",
+  "9♠":"SOPA MISTERIOSA","9♦":"2 VERDADES 1 MENTIRA","9♣":"PROBABILIDAD 1-4","9♥":"CULTURA CHUPISTICA",
+  "10♠":"OVEJA NEGRA (CON FAROL)","10♦":"CLON","10♣":"1 VS 1 (CON FAROL)","10♥":"YO NUNCA NUNCA",
+  "J♠":"REGLA","J♦":"CASCADA","J♣":"ROJO O NEGRO","J♥":"QUE LLEVO EN MI MALETA",
+  "Q♠":"SHOT","Q♦":"JAJAJA","Q♣":"FROZEN HANDS","Q♥":"VERDAD O SHOT",
+  "K♠":"¿DÓNDE?, ¿CÓMO?, ¿QUIÉN?, ¿Y CON QUIÉN?",
+  "K♦":"¿DÓNDE?, ¿CÓMO?, ¿QUIÉN?, ¿Y CON QUIÉN?",
+  "K♣":"¿DÓNDE?, ¿CÓMO?, ¿QUIÉN?, ¿Y CON QUIÉN?",
+  "K♥":"¿DÓNDE?, ¿CÓMO?, ¿QUIÉN?, ¿Y CON QUIÉN?"
+};
+
+function agregar() {
+  const n = nombre.value.trim();
+  if (n) {
+    jugadores.push(n);
+    cartasPorJugador.push([]);
+    nombre.value = "";
+    mostrarJugadores();
+  }
+}
+
+function siguiente() {
+  if (cartaSeleccionada) {
+    cartasPorJugador[turno].push(cartaSeleccionada);
+    cartaSeleccionada.element.remove();
+    cartaSeleccionada = null;
+  }
+  cerrarCarta();
+  turno = (turno + 1) % jugadores.length;
+  mostrarJugadores();
+}
+
+function mostrarJugadores() {
+  lista.innerHTML = jugadores.map((j,i)=>{
+    const cartas = cartasPorJugador[i]
+      .map(c=>`<span class="carta-mini" style="color:${c.color}">${c.texto}</span>`)
+      .join("");
+    return `<div class="jugador ${i===turno?"activo":""}">${j}${cartas}</div>`;
+  }).join("");
+}
+
+/* CREAR CARTAS ORDENADAS POR VALOR */
+const palos = [
+  {n:"♠", c:"white"},
+  {n:"♦", c:"red"},
+  {n:"♣", c:"white"},
+  {n:"♥", c:"red"}
+];
+const valores = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+
+valores.forEach(v=>{
+  const fila=document.createElement("div");
+  fila.className="fila";
+  palos.forEach(p=>{
+    const c=document.createElement("div");
+    c.className="carta";
+    c.style.color=p.c;
+    c.textContent=v+p.n;
+    c.onclick=()=>{
+      mostrarCarta(v+p.n,p.c);
+      cartaSeleccionada={texto:v+p.n,color:p.c,element:c};
+    };
+    fila.appendChild(c);
+  });
+  cartas.appendChild(fila);
+});
+
+function mostrarCarta(t,c){
+  const cg=document.getElementById("carta-grande");
+  const reto=retos[t]||"";
+  cg.style.display="flex";
+  cg.style.color=c;
+  cg.innerHTML=`<div class="carta-texto">${t}</div><div class="reto-texto">${reto}</div>`;
+}
+
+function cerrarCarta(){
+  document.getElementById("carta-grande").style.display="none";
+}
+
+function finalizar(){
+  const partes=[r1.value,r2.value,r3.value,r4.value].filter(t=>t.trim()!=="");
+  const texto="Fin del juego:\n"+partes.join(", ");
+  mostrarCarta(texto,"gold");
+}
+</script>
+
+</body>
+</html>
